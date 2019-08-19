@@ -1,5 +1,5 @@
 //
-//  Subscribers.Event.swift
+//  Subscribers+Event.swift
 //  CombineExploration
 //
 //  Created by Matt Gallagher on 16/7/19.
