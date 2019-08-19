@@ -3,7 +3,7 @@
 //  CombineExplorationTests
 //
 //  Created by Matt Gallagher on 21/7/19.
-//  Copyright © 2019 Matt Gallagher. All rights reserved.
+//  Copyright © 2019 Matt Gallagher ( https://www.cocoawithlove.com ). All rights reserved.
 //
 
 import XCTest
