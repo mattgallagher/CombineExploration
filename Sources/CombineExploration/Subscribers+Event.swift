@@ -30,11 +30,11 @@ public extension Subscribers.Event {
 }
 
 public extension Sequence {
-	func asCombineArray(completion: Subscribers.Completion<Never>? = nil) -> Array<Subscribers.Event<Element, Never>> {
-		return asCombineArray(failure: Never.self, completion: completion)
+	func asEvents(completion: Subscribers.Completion<Never>? = nil) -> Array<Subscribers.Event<Element, Never>> {
+		return asEvents(failure: Never.self, completion: completion)
 	}
 
-	func asCombineArray<Failure>(failure: Failure.Type, completion: Subscribers.Completion<Failure>? = nil) -> Array<Subscribers.Event<Element, Failure>> {
+	func asEvents<Failure>(failure: Failure.Type, completion: Subscribers.Completion<Failure>? = nil) -> Array<Subscribers.Event<Element, Failure>> {
 		let values = map(Subscribers.Event<Element, Failure>.value)
 		guard let completion = completion else { return values }
 		return values + [Subscribers.Event<Element, Failure>.complete(completion)]

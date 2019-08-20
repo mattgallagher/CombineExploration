@@ -26,7 +26,7 @@ class ConcurrencyTests: XCTestCase {
 		sink.increaseDemand(2)
 		subject.send(sequence: 4...6, completion: .finished)
 		
-		XCTAssertEqual(received, [1, 2, 4, 5].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [1, 2, 4, 5].asEvents(completion: .finished))
 	}
 
 	func testDeliveryOrder() {
@@ -44,7 +44,7 @@ class ConcurrencyTests: XCTestCase {
 				receiveValue: { received.append(.value($0)) }
 			)
 		withExtendedLifetime(c) { wait(for: [e], timeout: 5.0) }
-		XCTAssertNotEqual(received, (1...10).asCombineArray(completion: .finished))
+		XCTAssertNotEqual(received, (1...10).asEvents(completion: .finished))
 	}
 
 	func testReentrancy() {
@@ -62,7 +62,7 @@ class ConcurrencyTests: XCTestCase {
 		subject.subscribe(subscriber)
 		
 		subject.send(sequence: 1...1, completion: .finished)
-		XCTAssertEqual(received, (1...3).asCombineArray(completion: .finished))
+		XCTAssertEqual(received, (1...3).asEvents(completion: .finished))
 		
 		subscriber.cancel()
 	}

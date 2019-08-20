@@ -31,8 +31,8 @@ class LifecycleTests: XCTestCase {
 		scanB.subscribe(sinkD)
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [13, 17].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [13, 17].asEvents(completion: .finished))
 		
 		sinkC.cancel()
 		sinkD.cancel()
@@ -59,8 +59,8 @@ class LifecycleTests: XCTestCase {
 		multicastB.subscribe(sinkD)
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [16, 20].asEvents(completion: .finished))
 		
 		cancellableB.cancel()
 		sinkC.cancel()
@@ -89,8 +89,8 @@ class LifecycleTests: XCTestCase {
 		multicastB.subscribe(sinkD)
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [16, 20].asEvents(completion: .finished))
 		
 		cancellableB.cancel()
 		sinkC.cancel()
@@ -118,8 +118,8 @@ class LifecycleTests: XCTestCase {
 		multicastB.subscribe(sinkD)
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [0, 11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [13, 16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [0, 11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [13, 16, 20].asEvents(completion: .finished))
 		
 		cancellableB.cancel()
 		sinkC.cancel()
@@ -154,8 +154,8 @@ class LifecycleTests: XCTestCase {
 		multicastB.subscribe(sinkD)
 		subjects[0].send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [11, 13, 16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [11, 13, 16, 20].asEvents(completion: .finished))
 		XCTAssert(subjects.count == 1)
 		
 		cancellableB.cancel()
@@ -177,7 +177,7 @@ class LifecycleTests: XCTestCase {
 		subject1.send(sequence: 1...2, completion: .finished)
 		subject2.send(sequence: 3...4, completion: .finished)
 	
-		XCTAssertEqual(received, (1...2).asCombineArray(completion: .finished) + [.complete(.finished)])
+		XCTAssertEqual(received, (1...2).asEvents(completion: .finished) + [.complete(.finished)])
 	}
 
 	func testMultiSubjectSubscribe() {
@@ -195,7 +195,7 @@ class LifecycleTests: XCTestCase {
 		subject1.send(sequence: 1...2, completion: nil)
 		subject2.send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(received, [1, 2, 3, 4].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [1, 2, 3, 4].asEvents(completion: .finished))
 
 		cancellable1.cancel()
 		cancellable2.cancel()
@@ -214,7 +214,7 @@ class LifecycleTests: XCTestCase {
 		subject1.send(sequence: 1...2, completion: .finished)
 		subject2.send(sequence: 3...4, completion: .finished)
 		
-		XCTAssertEqual(received, [1, 2, 3, 4].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [1, 2, 3, 4].asEvents(completion: nil))
 
 		cancellable.cancel()
 	}
@@ -231,19 +231,19 @@ class LifecycleTests: XCTestCase {
 		
 		print("Phase 1...")
 		subject.send(1)
-		XCTAssertEqual(received, [].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [].asEvents(completion: nil))
 		
 		print("Phase 2...")
 		RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.001))
-		XCTAssertEqual(received, [].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [].asEvents(completion: nil))
 		
 		print("Phase 3...")
 		subject.send(2)
-		XCTAssertEqual(received, [].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [].asEvents(completion: nil))
 		
 		print("Phase 4...")
 		RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.001))
-		XCTAssertEqual(received, [2].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [2].asEvents(completion: nil))
 		
 		cancellable.cancel()
 	}
@@ -260,7 +260,7 @@ class LifecycleTests: XCTestCase {
 		subject.send(1)
 		subject.send(completion: .finished)
 
-		XCTAssertEqual(received, [1].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 
 		c.cancel()
 	}
@@ -284,7 +284,7 @@ class LifecycleTests: XCTestCase {
 		queue.async { subject.send(completion: .finished) }
 		wait(for: [e], timeout: 5.0)
 
-		XCTAssertEqual(received, [].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [].asEvents(completion: .finished))
 		
 		c.cancel()
 	}
@@ -307,7 +307,7 @@ class LifecycleTests: XCTestCase {
 		subject.send(completion: .finished)
 		wait(for: [e], timeout: 5.0)
 
-		XCTAssertEqual(received, [1].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 
 		c.cancel()
 	}
@@ -330,7 +330,7 @@ class LifecycleTests: XCTestCase {
 		XCTAssertNil(weakCancellable)
 		
 		subject.send(2)
-		XCTAssertEqual(received, [1].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [1].asEvents(completion: nil))
 	}
 	
 	func testSinkCancellation() {
@@ -353,7 +353,7 @@ class LifecycleTests: XCTestCase {
 		subject.send(2)
 		weakSink?.cancel()
 		subject.send(3)
-		XCTAssertEqual(received, [1, 2].asCombineArray(completion: nil))
+		XCTAssertEqual(received, [1, 2].asEvents(completion: nil))
 	}
 	
 	func testOwnership() {
@@ -380,7 +380,7 @@ class LifecycleTests: XCTestCase {
 
 		XCTAssertNil(weakSubject)
 		XCTAssertNil(weakSink)
-		XCTAssertEqual(received, [1].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 	}
 
 	func testSinkReactivation() {
@@ -403,14 +403,14 @@ class LifecycleTests: XCTestCase {
 		weakSubject?.send(completion: .finished)
 		
 		XCTAssertNil(weakSubject)
-		XCTAssertEqual(received, [1].asCombineArray(completion: .finished))
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 		
 		let subject2 = PassthroughSubject<Int, Never>()
 		subject2.subscribe(sink)
 		subject2.send(2)
 		
 		XCTAssertEqual(received,
-			[1].asCombineArray(completion: .finished) + [2].asCombineArray(completion: nil)
+			[1].asEvents(completion: .finished) + [2].asEvents(completion: nil)
 		)
 	}
 }

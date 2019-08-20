@@ -23,7 +23,7 @@ class ProtocolTests: XCTestCase {
 		subject.subscribe(sink)
 		subject.send(sequence: 1...3, completion: .finished)
 		
-		XCTAssertEqual(received, (1...3).asCombineArray(completion: .finished))
+		XCTAssertEqual(received, (1...3).asEvents(completion: .finished))
 	}
 	
 	func testScanABC() {
@@ -38,7 +38,7 @@ class ProtocolTests: XCTestCase {
 		scanB.subscribe(sinkC)
 		subjectA.send(sequence: 1...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
 	}
 	
 	func testSequenceABCD() {
@@ -58,8 +58,8 @@ class ProtocolTests: XCTestCase {
 		scanB.subscribe(sinkC)
 		scanB.subscribe(sinkD)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [11, 13, 16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [11, 13, 16, 20].asEvents(completion: .finished))
 	}
 	
 	func testOverlappingABCD() {
@@ -87,8 +87,8 @@ class ProtocolTests: XCTestCase {
 		subjects[0].send(sequence: 3...4, completion: .finished)
 		subjects[1].send(sequence: 1...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [11, 13, 16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [11, 13, 16, 20].asEvents(completion: .finished))
 	}
 	
 	func testCustomPublishCustomSink() {
@@ -102,7 +102,7 @@ class ProtocolTests: XCTestCase {
 		
 		subject.send(sequence: 1...3, completion: .finished)
 		
-		XCTAssertEqual(received, (1...3).asCombineArray(completion: .finished))
+		XCTAssertEqual(received, (1...3).asEvents(completion: .finished))
 	}
 
 	func testCombinePublishCustomSink() {
@@ -116,7 +116,7 @@ class ProtocolTests: XCTestCase {
 		
 		subject.send(sequence: 1...3, completion: .finished)
 		
-		XCTAssertEqual(received, (1...3).asCombineArray(completion: .finished))
+		XCTAssertEqual(received, (1...3).asEvents(completion: .finished))
 	}
 
 	func testCustomPublishCombineSubscribe() {
@@ -130,7 +130,7 @@ class ProtocolTests: XCTestCase {
 		
 		subject.send(sequence: 1...3, completion: .finished)
 		
-		XCTAssertEqual(received, (1...3).asCombineArray(completion: .finished))
+		XCTAssertEqual(received, (1...3).asEvents(completion: .finished))
 	}
 	
 	func testCustomABCD() {
@@ -158,7 +158,7 @@ class ProtocolTests: XCTestCase {
 		subjects[0].send(sequence: 3...4, completion: .finished)
 		subjects[1].send(sequence: 1...4, completion: .finished)
 		
-		XCTAssertEqual(receivedC, [11, 13, 16, 20].asCombineArray(completion: .finished))
-		XCTAssertEqual(receivedD, [11, 13, 16, 20].asCombineArray(completion: .finished))
+		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
+		XCTAssertEqual(receivedD, [11, 13, 16, 20].asEvents(completion: .finished))
 	}
 }
