@@ -18,6 +18,34 @@ public extension Publisher {
 public struct SubscribeImmediateReceiveOn<Upstream: Publisher, Context: Scheduler>: Publisher {
 	public typealias Output = Upstream.Output
 	public typealias Failure = Upstream.Failure
+
+	class Behavior: SubscriptionBehavior {
+		typealias Input = Upstream.Output
+		var upstream: Subscription? = nil
+		let downstream: AnySubscriber<Output, Upstream.Failure>
+		var demand: Subscribers.Demand = .none
+		let context: Context
+		let options: Context.SchedulerOptions?
+		
+		init(downstream: AnySubscriber<Output, Upstream.Failure>, context: Context, options: Context.SchedulerOptions?) {
+			self.downstream = downstream
+			self.context = context
+			self.options = options
+		}
+
+		func receive(_ input: Upstream.Output) -> Subscribers.Demand {
+			context.schedule(options: options) { [downstream] in
+				_ = downstream.receive(input)
+			}
+			return .unlimited
+		}
+
+		func receive(completion: Subscribers.Completion<Failure>) {
+			context.schedule(options: options) { [downstream] in
+				downstream.receive(completion: completion)
+			}
+		}
+	}
 	
 	let upstream: Upstream
 	let context: Context
@@ -29,13 +57,9 @@ public struct SubscribeImmediateReceiveOn<Upstream: Publisher, Context: Schedule
 	}
 	
 	public func receive<S>(subscriber: S) where S: Subscriber, Failure == S.Failure, Output == S.Input {
-		self.upstream.subscribe(Subscribers.Sink<Output, Failure>(
-			receiveCompletion: { [context, options] completion in
-				context.schedule(options: options) { subscriber.receive(completion: completion) }
-			},
-			receiveValue: { [context, options] value in
-				context.schedule(options: options) { _ = subscriber.receive(value) }
-			}
-		))
+		let downstream = AnySubscriber(subscriber)
+		let behavior = Behavior(downstream: downstream, context: context, options: options)
+		let subscription = CustomSubscription(behavior: behavior)
+		upstream.subscribe(subscription)
 	}
 }

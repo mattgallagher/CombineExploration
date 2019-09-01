@@ -15,20 +15,13 @@ class LifecycleTests: XCTestCase {
 	func testSharedSubjectABCD() {
 		let subjectA = PassthroughSubject<Int, Never>()
 		let scanB = subjectA.scan(10) { state, next in state + next }
-		var receivedC = [Subscribers.Event<Int, Never>]()
-		let sinkC = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedC.append(.complete($0)) },
-			receiveValue: { receivedC.append(.value($0)) }
-		)
-		var receivedD = [Subscribers.Event<Int, Never>]()
-		let sinkD = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedD.append(.complete($0)) },
-			receiveValue: { receivedD.append(.value($0)) }
-		)
 
-		scanB.subscribe(sinkC)
+		var receivedC = [Subscribers.Event<Int, Never>]()
+		let sinkC = scanB.sink(event: { e in receivedC.append(e) })
 		subjectA.send(sequence: 1...2, completion: nil)
-		scanB.subscribe(sinkD)
+		
+		var receivedD = [Subscribers.Event<Int, Never>]()
+		let sinkD = scanB.sink(event: { e in receivedD.append(e) })
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
 		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
@@ -40,134 +33,102 @@ class LifecycleTests: XCTestCase {
 
 	func testMulticastABCD() {
 		let subjectA = PassthroughSubject<Int, Never>()
-		let scanB = Publishers.Scan(upstream: subjectA, initialResult: 10) { state, next in state + next }
-		let multicastB = Publishers.Multicast(upstream: scanB) { PassthroughSubject() }
-		let cancellableB = multicastB.connect()
+		let multicastB = subjectA
+			.scan(10) { state, next in state + next }
+			.multicast { PassthroughSubject() }
+		let cancelB = multicastB.connect()
+		
 		var receivedC = [Subscribers.Event<Int, Never>]()
-		let sinkC = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedC.append(.complete($0)) },
-			receiveValue: { receivedC.append(.value($0)) }
-		)
-		var receivedD = [Subscribers.Event<Int, Never>]()
-		let sinkD = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedD.append(.complete($0)) },
-			receiveValue: { receivedD.append(.value($0)) }
-		)
-
-		multicastB.subscribe(sinkC)
+		let sinkC = multicastB.sink(event: { e in receivedC.append(e) })
 		subjectA.send(sequence: 1...2, completion: nil)
-		multicastB.subscribe(sinkD)
+		
+		var receivedD = [Subscribers.Event<Int, Never>]()
+		let sinkD = multicastB.sink(event: { e in receivedD.append(e) })
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
 		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
 		XCTAssertEqual(receivedD, [16, 20].asEvents(completion: .finished))
 		
-		cancellableB.cancel()
 		sinkC.cancel()
 		sinkD.cancel()
+		cancelB.cancel()
 	}
 	
 	func testBufferedABCD() {
 		let subjectA = PassthroughSubject<Int, Never>()
-		let scanB = Publishers.Scan(upstream: subjectA, initialResult: 10) { state, next in state + next }
-		let bufferB = Publishers.Buffer(upstream: scanB, size: Int.max, prefetch: .keepFull, whenFull: .dropNewest)
-		let multicastB = Publishers.Multicast(upstream: bufferB) { PassthroughSubject() }
-		let cancellableB = multicastB.connect()
+		let multicastB = subjectA
+			.scan(10) { state, next in state + next }
+			.buffer(size: Int.max, prefetch: .keepFull, whenFull: .dropNewest)
+			.multicast { PassthroughSubject() }
+		let cancelB = multicastB.connect()
+		
 		var receivedC = [Subscribers.Event<Int, Never>]()
-		let sinkC = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedC.append(.complete($0)) },
-			receiveValue: { receivedC.append(.value($0)) }
-		)
-		var receivedD = [Subscribers.Event<Int, Never>]()
-		let sinkD = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedD.append(.complete($0)) },
-			receiveValue: { receivedD.append(.value($0)) }
-		)
-
-		multicastB.subscribe(sinkC)
+		let sinkC = multicastB.sink(event: { e in receivedC.append(e) })
 		subjectA.send(sequence: 1...2, completion: nil)
-		multicastB.subscribe(sinkD)
+		
+		var receivedD = [Subscribers.Event<Int, Never>]()
+		let sinkD = multicastB.sink(event: { e in receivedD.append(e) })
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
 		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
 		XCTAssertEqual(receivedD, [16, 20].asEvents(completion: .finished))
 		
-		cancellableB.cancel()
 		sinkC.cancel()
 		sinkD.cancel()
+		cancelB.cancel()
 	}
 	
 	func testMulticastLatestABCD() {
 		let subjectA = PassthroughSubject<Int, Never>()
-		let scanB = Publishers.Scan(upstream: subjectA, initialResult: 10) { state, next in state + next }
-		let multicastB = Publishers.Multicast(upstream: scanB) { CurrentValueSubject<Int, Never>(0) }
-		let cancellableB = multicastB.connect()
+		let multicastB = subjectA
+			.scan(10) { state, next in state + next }
+			.multicast { CurrentValueSubject(0) }
+		let cancelB = multicastB.connect()
+		
 		var receivedC = [Subscribers.Event<Int, Never>]()
-		let sinkC = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedC.append(.complete($0)) },
-			receiveValue: { receivedC.append(.value($0)) }
-		)
-		var receivedD = [Subscribers.Event<Int, Never>]()
-		let sinkD = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedD.append(.complete($0)) },
-			receiveValue: { receivedD.append(.value($0)) }
-		)
-
-		multicastB.subscribe(sinkC)
+		let sinkC = multicastB.sink(event: { e in receivedC.append(e) })
 		subjectA.send(sequence: 1...2, completion: nil)
-		multicastB.subscribe(sinkD)
+		
+		var receivedD = [Subscribers.Event<Int, Never>]()
+		let sinkD = multicastB.sink(event: { e in receivedD.append(e) })
 		subjectA.send(sequence: 3...4, completion: .finished)
 		
 		XCTAssertEqual(receivedC, [0, 11, 13, 16, 20].asEvents(completion: .finished))
 		XCTAssertEqual(receivedD, [13, 16, 20].asEvents(completion: .finished))
 		
-		cancellableB.cancel()
 		sinkC.cancel()
 		sinkD.cancel()
+		cancelB.cancel()
 	}
 	
 	func testBufferMulticastABCD() {
-		var subjects = [PassthroughSubject<Int, Never>]()
-		let deferredA = Deferred { () -> PassthroughSubject<Int, Never> in
-			let request = PassthroughSubject<Int, Never>()
-			subjects.append(request)
-			return request
-		}
-		let scanB = Publishers.Scan(upstream: deferredA, initialResult: 10) { state, next in state + next }
-		let multicastB = Publishers.Multicast(upstream: scanB) {
-			BufferSubject(limit: Int.max)
-		}
-		let cancellableB = multicastB.connect()
+		let subjectA = PassthroughSubject<Int, Never>()
+		let multicastB = subjectA
+			.scan(10) { state, next in state + next }
+			.multicast { BufferSubject(limit: Int.max) }
+		let cancelB = multicastB.connect()
+		
 		var receivedC = [Subscribers.Event<Int, Never>]()
-		let sinkC = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedC.append(.complete($0)) },
-			receiveValue: { receivedC.append(.value($0)) }
-		)
+		let sinkC = multicastB.sink(event: { e in receivedC.append(e) })
+		subjectA.send(sequence: 1...2, completion: nil)
+		
 		var receivedD = [Subscribers.Event<Int, Never>]()
-		let sinkD = Subscribers.Sink<Int, Never>(
-			receiveCompletion: { receivedD.append(.complete($0)) },
-			receiveValue: { receivedD.append(.value($0)) }
-		)
-
-		multicastB.subscribe(sinkC)
-		subjects[0].send(sequence: 1...2, completion: nil)
-		multicastB.subscribe(sinkD)
-		subjects[0].send(sequence: 3...4, completion: .finished)
+		let sinkD = multicastB.sink(event: { e in receivedD.append(e) })
+		subjectA.send(sequence: 3...4, completion: .finished)
 		
 		XCTAssertEqual(receivedC, [11, 13, 16, 20].asEvents(completion: .finished))
 		XCTAssertEqual(receivedD, [11, 13, 16, 20].asEvents(completion: .finished))
-		XCTAssert(subjects.count == 1)
 		
-		cancellableB.cancel()
 		sinkC.cancel()
 		sinkD.cancel()
+		cancelB.cancel()
 	}
 
 	func testMultipleSubscribe() {
 		let subject1 = PassthroughSubject<Int, Never>()
 		let subject2 = PassthroughSubject<Int, Never>()
 		var received = [Subscribers.Event<Int, Never>]()
-		let sink = CustomSink<Int, Never>(
+		let sink = Subscribers.Sink<Int, Never>(
 			receiveCompletion: { received.append(.complete($0)) },
 			receiveValue: { received.append(.value($0)) }
 		)
@@ -177,17 +138,17 @@ class LifecycleTests: XCTestCase {
 		subject1.send(sequence: 1...2, completion: .finished)
 		subject2.send(sequence: 3...4, completion: .finished)
 	
-		XCTAssertEqual(received, (1...2).asEvents(completion: .finished) + [.complete(.finished)])
+		XCTAssertEqual(received, (1...2).asEvents(completion: .finished))
 	}
 
 	func testMultiSubjectSubscribe() {
 		let subject1 = PassthroughSubject<Int, Never>()
 		let subject2 = PassthroughSubject<Int, Never>()
-		let subject3 = PassthroughSubject<Int, Never>()
-		let cancellable1 = subject1.subscribe(subject3)
-		let cancellable2 = subject2.subscribe(subject3)
+		let multiInputSubject = PassthroughSubject<Int, Never>()
+		let cancellable1 = subject1.subscribe(multiInputSubject)
+		let cancellable2 = subject2.subscribe(multiInputSubject)
 		var received = [Subscribers.Event<Int, Never>]()
-		let cancellable3 = subject3.sink(
+		let multiInputCancellable = multiInputSubject.sink(
 			receiveCompletion: { received.append(.complete($0)) },
 			receiveValue: { received.append(.value($0)) }
 		)
@@ -199,7 +160,7 @@ class LifecycleTests: XCTestCase {
 
 		cancellable1.cancel()
 		cancellable2.cancel()
-		cancellable3.cancel()
+		multiInputCancellable.cancel()
 	}
 
 	func testMergeSink() {
@@ -219,112 +180,15 @@ class LifecycleTests: XCTestCase {
 		cancellable.cancel()
 	}
 	
-	func testReceiveOn() {
-		let subject = PassthroughSubject<Int, Never>()
-
-		print("Start...")
-		var received = [Subscribers.Event<Int, Never>]()
-		let cancellable = subject
-			.debug()
-			.receive(on: DispatchQueue.main)
-			.sink(receiveValue: { received.append(.value($0)) })
-		
-		print("Phase 1...")
-		subject.send(1)
-		XCTAssertEqual(received, [].asEvents(completion: nil))
-		
-		print("Phase 2...")
-		RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.001))
-		XCTAssertEqual(received, [].asEvents(completion: nil))
-		
-		print("Phase 3...")
-		subject.send(2)
-		XCTAssertEqual(received, [].asEvents(completion: nil))
-		
-		print("Phase 4...")
-		RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.001))
-		XCTAssertEqual(received, [2].asEvents(completion: nil))
-		
-		cancellable.cancel()
-	}
-	
-	func testReceiveOnSuccess() {
-		let subject = PassthroughSubject<Int, Never>()
-		var received = [Subscribers.Event<Int, Never>]()
-		let c = subject
-			.sink(
-				receiveCompletion: { received.append(.complete($0)) },
-				receiveValue: { received.append(.value($0)) }
-			)
-		
-		subject.send(1)
-		subject.send(completion: .finished)
-
-		XCTAssertEqual(received, [1].asEvents(completion: .finished))
-
-		c.cancel()
-	}
-
-	func testReceiveOnFailure() {
-		let subject = PassthroughSubject<Int, Never>()
-		let queue = DispatchQueue(label: "test")
-		let e = expectation(description: "")
-		var received = [Subscribers.Event<Int, Never>]()
-		let c = subject
-			.receive(on: queue)
-			.sink(
-				receiveCompletion: { 
-					received.append(.complete($0))
-					e.fulfill()
-				},
-				receiveValue: { received.append(.value($0)) }
-			)
-		
-		subject.send(1)
-		queue.async { subject.send(completion: .finished) }
-		wait(for: [e], timeout: 5.0)
-
-		XCTAssertEqual(received, [].asEvents(completion: .finished))
-		
-		c.cancel()
-	}
-	
-	func testImmediateReceiveOn() {
-		let subject = PassthroughSubject<Int, Never>()
-		let e = expectation(description: "")
-		var received = [Subscribers.Event<Int, Never>]()
-		let c = subject
-			.subscribeImmediateReceive(on: DispatchQueue(label: "test"))
-			.sink(
-				receiveCompletion: {
-					received.append(.complete($0))
-					e.fulfill()
-				},
-				receiveValue: { received.append(.value($0)) }
-			)
-		
-		subject.send(1)
-		subject.send(completion: .finished)
-		wait(for: [e], timeout: 5.0)
-
-		XCTAssertEqual(received, [1].asEvents(completion: .finished))
-
-		c.cancel()
-	}
-	
 	func testAnyCancellable() {
 		let subject = PassthroughSubject<Int, Never>()
 		var received = [Subscribers.Event<Int, Never>]()
 
 		weak var weakCancellable: AnyCancellable?
 		do {
-			let anyCancellable: AnyCancellable = subject
-				.sink(
-					receiveCompletion: { received.append(.complete($0)) },
-					receiveValue: { received.append(.value($0)) }
-				)
+			let anyCancellable = subject
+				.sink(event: { e in received.append(e) } )
 			weakCancellable = anyCancellable
-			
 			subject.send(1)
 		}
 		XCTAssertNil(weakCancellable)
@@ -369,13 +233,12 @@ class LifecycleTests: XCTestCase {
 				receiveValue: { received.append(.value($0)) }
 			)
 			weakSink = sink
-			
 			subject.subscribe(sink)
-			subject.send(1)
 		}
 		XCTAssertNotNil(weakSubject)
 		XCTAssertNotNil(weakSink)
 
+		weakSubject?.send(1)
 		weakSubject?.send(completion: .finished)
 
 		XCTAssertNil(weakSubject)
@@ -402,15 +265,37 @@ class LifecycleTests: XCTestCase {
 		
 		weakSubject?.send(completion: .finished)
 		
+		// At this point, the first subscription to sink is finished
 		XCTAssertNil(weakSubject)
 		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 		
+		// Try to start a new one
 		let subject2 = PassthroughSubject<Int, Never>()
 		subject2.subscribe(sink)
 		subject2.send(2)
 		
-		XCTAssertEqual(received,
-			[1].asEvents(completion: .finished) + [2].asEvents(completion: nil)
-		)
+		#if false
+			// Prior to macOS 10.15 beta 6...
+			XCTAssertEqual(received,
+				[1].asEvents(completion: .finished) + [2].asEvents(completion: nil)
+			)
+		#else
+			// In macOS 10.15 beta 6...
+			XCTAssertEqual(received, [1].asEvents(completion: .finished)
+			)
+		#endif
+	}
+	
+	func testSinkCancellationPlusAsyncDelivery() {
+		var received = [Subscribers.Event<Int, Never>]()
+		let sink = Just(1)
+			.receive(on: DispatchQueue.main)
+			.sink(event: { e in received.append(e) })
+
+		sink.cancel()
+		XCTAssertEqual(received, [].asEvents(completion: nil))
+
+		RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.001))
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 	}
 }

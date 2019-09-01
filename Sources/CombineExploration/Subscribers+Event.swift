@@ -17,6 +17,15 @@ public extension Subscribers {
 	}
 }
 
+public extension Publisher {
+	func sink(event: @escaping (Subscribers.Event<Output, Failure>) -> ()) -> AnyCancellable {
+		return sink(
+			receiveCompletion: { c in event(.complete(c)) },
+			receiveValue: { v in event(.value(v)) }
+		)
+	}
+}
+
 extension Subscribers.Event: Equatable where Value: Equatable, Failure: Equatable {
 }
 

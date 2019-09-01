@@ -12,6 +12,20 @@ import Combine
 import CombineExploration
 
 class ConcurrencyTests: XCTestCase {
+	func testSinkCancellationPlusImmediateAsyncDelivery() {
+		var received = [Subscribers.Event<Int, Never>]()
+		let sequence = Just(1)
+			.receive(on: DispatchQueue.main)
+			.customSink(
+				receiveCompletion: { c in received.append(.complete(c)) },
+				receiveValue: { v in received.append(.value(v)) }
+			)
+		sequence.cancel()
+		XCTAssertEqual(received, [].asEvents(completion: nil))
+		RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.001))
+		XCTAssertEqual(received, [].asEvents(completion: nil))
+	}
+
 	func testDemand() {
 		let subject = PassthroughSubject<Int, Never>()
 		var received = [Subscribers.Event<Int, Never>]()
@@ -103,8 +117,101 @@ class ConcurrencyTests: XCTestCase {
 		XCTAssertFalse(collision)
 	}
 	
+	func testReceiveOn() {
+		let subject = PassthroughSubject<Int, Never>()
+
+		print("Start...")
+		var received = [Subscribers.Event<Int, Never>]()
+		let cancellable = subject
+			.debug()
+			.receive(on: DispatchQueue.main)
+			.sink(receiveValue: { received.append(.value($0)) })
+		
+		print("Phase 1...")
+		subject.send(1)
+		XCTAssertEqual(received, [].asEvents(completion: nil))
+		
+		print("Phase 2...")
+		RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.001))
+		XCTAssertEqual(received, [].asEvents(completion: nil))
+		
+		print("Phase 3...")
+		subject.send(2)
+		XCTAssertEqual(received, [].asEvents(completion: nil))
+		
+		print("Phase 4...")
+		RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.001))
+		XCTAssertEqual(received, [2].asEvents(completion: nil))
+		
+		cancellable.cancel()
+	}
+	
+	func testReceiveOnSuccess() {
+		let subject = PassthroughSubject<Int, Never>()
+		var received = [Subscribers.Event<Int, Never>]()
+		let c = subject
+			.sink(
+				receiveCompletion: { received.append(.complete($0)) },
+				receiveValue: { received.append(.value($0)) }
+			)
+		
+		subject.send(1)
+		subject.send(completion: .finished)
+
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
+
+		c.cancel()
+	}
+
+	func testReceiveOnFailure() {
+		let subject = PassthroughSubject<Int, Never>()
+		let queue = DispatchQueue(label: "test")
+		let e = expectation(description: "")
+		var received = [Subscribers.Event<Int, Never>]()
+		let c = subject
+			.receive(on: queue)
+			.sink(
+				receiveCompletion: { 
+					received.append(.complete($0))
+					e.fulfill()
+				},
+				receiveValue: { received.append(.value($0)) }
+			)
+		
+		subject.send(1)
+		queue.async { subject.send(completion: .finished) }
+		wait(for: [e], timeout: 5.0)
+
+		XCTAssertEqual(received, [].asEvents(completion: .finished))
+		
+		c.cancel()
+	}
+	
+	func testImmediateReceiveOn() {
+		let subject = PassthroughSubject<Int, Never>()
+		let e = expectation(description: "")
+		var received = [Subscribers.Event<Int, Never>]()
+		let c = subject
+			.subscribeImmediateReceive(on: DispatchQueue(label: "test"))
+			.sink(
+				receiveCompletion: {
+					received.append(.complete($0))
+					e.fulfill()
+				},
+				receiveValue: { received.append(.value($0)) }
+			)
+		
+		subject.send(1)
+		subject.send(completion: .finished)
+		wait(for: [e], timeout: 5.0)
+
+		XCTAssertEqual(received, [1].asEvents(completion: .finished))
+
+		c.cancel()
+	}
+	
 	#if false
-	// NOTE: this test deadlocks
+	// NOTE: this test intentionally deadlocks
 	func testDeadlock() {
 		let subject = PassthroughSubject<Int, Never>()
 		let semaphore = DispatchSemaphore(value: 0)
