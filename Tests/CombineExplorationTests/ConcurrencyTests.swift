@@ -172,6 +172,7 @@ class ConcurrencyTests: XCTestCase {
 		let subject = PassthroughSubject<Int, Never>()
 		var received = [Subscribers.Event<Int, Never>]()
 		let c = subject
+			.receive(on: ImmediateScheduler.shared)
 			.sink(
 				receiveCompletion: { 
 					received.append(.complete($0))
