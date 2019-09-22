@@ -20,8 +20,10 @@ class ConcurrencyTests: XCTestCase {
 				receiveCompletion: { c in received.append(.complete(c)) },
 				receiveValue: { v in received.append(.value(v)) }
 			)
+		
 		sequence.cancel()
 		XCTAssertEqual(received, [].asEvents(completion: nil))
+		
 		RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.001))
 		XCTAssertEqual(received, [].asEvents(completion: nil))
 	}
@@ -39,8 +41,27 @@ class ConcurrencyTests: XCTestCase {
 		subject.send(sequence: 1...3, completion: nil)
 		sink.increaseDemand(2)
 		subject.send(sequence: 4...6, completion: .finished)
+		sink.increaseDemand(2)
 		
 		XCTAssertEqual(received, [1, 2, 4, 5].asEvents(completion: .finished))
+	}
+
+	func testDemandWithBuffer() {
+		let subject = PassthroughSubject<Int, Never>()
+		var received = [Subscribers.Event<Int, Never>]()
+		let sink = CustomDemandSink<Int, Never>(
+			demand: 1,
+			receiveCompletion: { received.append(.complete($0)) },
+			receiveValue: { received.append(.value($0)) }
+		)
+		subject.buffer(size: 1, prefetch: .byRequest, whenFull: .dropOldest).subscribe(sink)
+		
+		subject.send(sequence: 1...3, completion: nil)
+		sink.increaseDemand(1)
+		subject.send(sequence: 4...6, completion: .finished)
+		sink.increaseDemand(1)
+		
+		XCTAssertEqual(received, [1, 3, 6].asEvents(completion: nil))
 	}
 
 	func testDeliveryOrder() {
@@ -67,16 +88,16 @@ class ConcurrencyTests: XCTestCase {
 		let subscriber = Subscribers.Sink<Int, Never>(
 			receiveCompletion: { received.append(.complete($0)) },
 			receiveValue: { v in
-				received.append(.value(v))
-				if received.count < 3 {
+				if v < 3 {
 					subject.send(v + 1)
 				}
+				received.append(.value(v))
 			}
 		)
 		subject.subscribe(subscriber)
 		
 		subject.send(sequence: 1...1, completion: .finished)
-		XCTAssertEqual(received, (1...3).asEvents(completion: .finished))
+		XCTAssertEqual(received, [3, 2, 1].asEvents(completion: .finished))
 		
 		subscriber.cancel()
 	}
@@ -117,7 +138,7 @@ class ConcurrencyTests: XCTestCase {
 		XCTAssertFalse(collision)
 	}
 	
-	func testReceiveOn() {
+	func testReceiveWithLogging() {
 		let subject = PassthroughSubject<Int, Never>()
 
 		print("Start...")
@@ -146,17 +167,22 @@ class ConcurrencyTests: XCTestCase {
 		cancellable.cancel()
 	}
 	
-	func testReceiveOnSuccess() {
+	func testReceiveOnImmediate() {
+		let e = expectation(description: "")
 		let subject = PassthroughSubject<Int, Never>()
 		var received = [Subscribers.Event<Int, Never>]()
 		let c = subject
 			.sink(
-				receiveCompletion: { received.append(.complete($0)) },
+				receiveCompletion: { 
+					received.append(.complete($0))
+					e.fulfill()
+				},
 				receiveValue: { received.append(.value($0)) }
 			)
 		
 		subject.send(1)
 		subject.send(completion: .finished)
+		wait(for: [e], timeout: 5.0)
 
 		XCTAssertEqual(received, [1].asEvents(completion: .finished))
 
@@ -164,9 +190,9 @@ class ConcurrencyTests: XCTestCase {
 	}
 
 	func testReceiveOnFailure() {
-		let subject = PassthroughSubject<Int, Never>()
 		let queue = DispatchQueue(label: "test")
 		let e = expectation(description: "")
+		let subject = PassthroughSubject<Int, Never>()
 		var received = [Subscribers.Event<Int, Never>]()
 		let c = subject
 			.receive(on: queue)
@@ -187,12 +213,13 @@ class ConcurrencyTests: XCTestCase {
 		c.cancel()
 	}
 	
-	func testImmediateReceiveOn() {
+	func testBufferedReceiveOn() {
 		let subject = PassthroughSubject<Int, Never>()
 		let e = expectation(description: "")
 		var received = [Subscribers.Event<Int, Never>]()
 		let c = subject
-			.subscribeImmediateReceive(on: DispatchQueue(label: "test"))
+			.buffer(size: Int.max, prefetch: .byRequest, whenFull: .dropNewest)
+			.receive(on: DispatchQueue(label: "test"))
 			.sink(
 				receiveCompletion: {
 					received.append(.complete($0))

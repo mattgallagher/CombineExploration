@@ -120,7 +120,8 @@ class PerformanceTests: XCTestCase {
 		var total = 0
 		let t = mach_absolute_time()
 		let c = subject
-			.subscribeImmediateReceive(on: DispatchQueue(label: "test"))
+			.buffer(size: Int.max, prefetch: .keepFull, whenFull: .dropOldest)
+			.receive(on: DispatchQueue(label: "test"))
 			.sink(receiveCompletion: { _ in semaphore.signal() }, receiveValue: { total += $0 })
 		withExtendedLifetime(c) {
 			for i in 1...sequenceLength {

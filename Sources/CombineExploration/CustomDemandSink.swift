@@ -22,9 +22,7 @@ public struct CustomDemandSink<Input, Failure: Error>: Subscriber, Cancellable {
 	}
 	
 	public func increaseDemand(_ value: Int) {
-		activeSubscription.mutate {
-			$0.subscription?.request(.max(value))
-		}
+		activeSubscription.value.subscription?.request(.max(value))
 	}
 	
 	public func receive(subscription: Subscription) {
